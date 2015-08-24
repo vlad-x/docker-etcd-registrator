@@ -1,11 +1,25 @@
 # docker-etcd-registrator
 
+**NOTE** This is a fork of [psi-4ward/docker-etcd-registrator](https://github.com/psi-4ward/docker-etcd-registrator) with built-in DNS server for simplier setup. Adds two parameters `BUILTIN_DNS_PROXY` (e.g. `BUILTIN_DNS_PROXY=8.8.8.8`) which enables the built-in DNS server (and disables the rest of the backend), and `ETCD_PREFIX` (default `ETCD_PREFIX='/dockerdns'`) which is also used as the base domain for the DNS entries. Each docker container gets multiple domain names to be used for discovery in different scenarios:
+* &lt;docker-image-name&gt;.&lt;base-domain&gt;
+* &lt;parent-host&gt;.&lt;docker-image-name&gt;.&lt;base-domain&gt;
+* &lt;docker-container-name&gt;.&lt;base-domain&gt;
+* &lt;parent-host&gt;.&lt;docker-container-name&gt;.&lt;base-domain&gt;
+
+e.g. the following DNS entries will be created for a container running RethinkDB started with --name rethinkdb-main on host production1:
+* rethinkdb.dockerdns
+* production1.rethinkdb.dockerdns
+* rethinkdb-main.dockerdns
+* production1.rethinkdb-main.dockerdns
+
+-----
+
 Docker service registrator for etcd (and CoreOS).
 The very end of `sidekick.service`
 
 * [SkyDNS](https://github.com/skynetservices/skydns) support
 * [Vulcanproxy](http://vulcanproxy.com) support
-* Startup synchronization: bring etcd up to date 
+* Startup synchronization: bring etcd up to date
  * Add already running containers
  * Remove stopped but registred container
 * Realtime: Listening for docker events
@@ -75,7 +89,7 @@ All params are optional
 <br>
 * `DOCKER_HOST`: `/var/run/docker.sock` or `tcp://localhost:2376`
 * `DOCKER_TLS_VERIFY` from docker-modem
-* `DOCKER_CERT_PATH`: Directory containing `ca.pem`, `cert.pem`, `key.pem` (filenames hardcoded) 
+* `DOCKER_CERT_PATH`: Directory containing `ca.pem`, `cert.pem`, `key.pem` (filenames hardcoded)
 <br>
 * `ETCD_ENDPOINTS`: `http://127.0.0.1:4001`
 * `ETCD_CAFILE`
@@ -90,9 +104,9 @@ flag       | description
  *         | print every debug message |
  docker    | docker related messages   |
  conteiner | container-inspect => service transformation |
- skydns    | skydns etcd data population | 
- vulcand   | skydns etcd data population | 
- modem     | raw docker socket messages | 
+ skydns    | skydns etcd data population |
+ vulcand   | skydns etcd data population |
+ modem     | raw docker socket messages |
 
 
 ## Service Discovery Configration
@@ -126,7 +140,7 @@ Per default registrator will not generate any vulcand frontend or backend.
 
 In general the `SERVICE_VULCAND_FE_k1_k2_k3=value` style would result in a JSON structure like: `{"k1": {"k2": {"k3": "value"} } }`
 
-Generate a vulcand-backend of type http using the defaults for every port but 9000: 
+Generate a vulcand-backend of type http using the defaults for every port but 9000:
 ```shell
 $ docker run -p 80:80 -p 443:443 -p 9000:9000 \
     -e "SERVICE_NAME=websrv" \
