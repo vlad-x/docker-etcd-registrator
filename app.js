@@ -26,6 +26,8 @@ _.defaults(process.env, {
 
   //REGISTER=public,
   //REGISTER_PUBLIC_IP=10.0.1.5
+
+  //BUILTIN_DNS_PROXY=8.8.8.8
 });
 
 
@@ -57,6 +59,20 @@ docker.on('error', function(err) {
 var backends = [];
 fs.readdirSync(__dirname + '/backends').forEach(function(file) {
   if(!file.match(/\.js$/)) return;
+
+  if (file == 'dns.js') {
+    if (process.env.BUILTIN_DNS_PROXY) {
+      console.log('Using built-in DNS server');
+    } else {
+      console.log('Skipping built-in DNS server');
+      return;
+    }
+  } else {
+    if (process.env.BUILTIN_DNS_PROXY) {
+      return;
+    }
+  }
+
   var Be = require(__dirname + '/backends/' + file);
   backends.push(new Be(docker));
 });

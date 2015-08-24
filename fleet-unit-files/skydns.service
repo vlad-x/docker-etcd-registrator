@@ -1,7 +1,7 @@
 [Unit]
 Description=SkyDNS
-Requires=docker.service etcd.service
-After=docker.service etcd.service
+Requires=docker.service etcd2.service
+After=docker.service etcd2.service
 
 [Service]
 Restart=always
@@ -20,6 +20,8 @@ ExecStartPre=/bin/sh -c "\
   || \
   etcdctl set /skydns/config \
     '{\"domain\":\"local.\",\"hostmaster\":\"admin@example.com\",\"nameservers\":[\"8.8.8.8:53\",\"8.8.4.4:53\"],\"ttl\":60}' \
+  etcdctl mkdir /skydns/local
+  etcdctl mkdir /skydns/local/skydns
   "
 
 # Start the container
