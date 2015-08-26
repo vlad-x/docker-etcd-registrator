@@ -238,6 +238,8 @@ var pathToNames = function(domain, path) {
   return [ name ];
 };
 
+var cache = {};
+
 BuiltInDns.prototype.startServer = function(server) {
   var self = this;
 
@@ -291,7 +293,20 @@ BuiltInDns.prototype.startServer = function(server) {
         }
       });
     } else {
-      console.log('FORWARD', q);
+      var cacheKey = [q.name, q.type].join('-');
+      var cached = cache[cacheKey];
+      if (cached) {
+        if (+(new Date) - cached.timestamp > 5*60*1000)  {
+          delete cache[cacheKey];
+        } else {
+          for (var key in cached.value) {
+            response[key] = cached.value[key];
+          }
+          console.log('DNS response from cache', response.answer.map(function(a){ return [a.name, a.address] }));
+          return response.send();
+        }
+      }
+      console.log('Forwarding DNS query', q);
       self._makeDNSRequest(q.name, q.type, function(err, resp){
         if (err) {
           console.error(err);
@@ -301,7 +316,16 @@ BuiltInDns.prototype.startServer = function(server) {
           response.answer = resp.answer;
           response.authority = resp.authority;
           response.additional = resp.additional;
+          cache[cacheKey] = {
+            timestamp: +(new Date),
+            value: {
+              answer: resp.answer,
+              authority: resp.authority,
+              additional: resp.additional
+            }
+          };
         }
+        console.log('DNS response', response.answer.map(function(a){ return [a.name, a.address] }));
         response.send();
       });
     }
