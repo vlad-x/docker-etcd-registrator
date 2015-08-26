@@ -1,6 +1,6 @@
 var util = require('util');
 var _ = require('lodash');
-var debug = require('debug')('skydns');
+var debug = require('debug')('dns');
 var etcd = require('../lib/etcd.js');
 var backendMixin = require('../lib/backendMixin.js');
 
@@ -110,11 +110,11 @@ BuiltInDns.prototype.sync = function (activeServices) {
       return;
     }
 
-    // recursive find keys beginning with our HOSTNAME
     var inEtcdUrls = [];
     if(obj.node.nodes) {
-      inEtcdUrls = etcd.deepFindKeys(obj.node, new RegExp('/' + process.env.HOSTNAME + '-[^/]*'));
+      inEtcdUrls = etcd.deepFindKeys(obj.node, new RegExp('\/' + process.env.HOSTNAME + '$'));
     }
+    console.log('inEtcdUrls', inEtcdUrls);
 
     // remove not running
     var runningUrls = _.keys(runningMap);

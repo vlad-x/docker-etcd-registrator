@@ -90,6 +90,7 @@ docker.on('eventstream_open', function() {
   sync();
   setInterval(sync, 3600 * 8 * 1000);
 });
+docker.on('sync', sync);
 
 
 function errorLogger(method, err) {
