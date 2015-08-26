@@ -61,7 +61,7 @@ BuiltInDns.prototype.addService = function addService(service, cb) {
     text: text
   };
 
-  console.log('Service: ' + service.name + ' ' + service.ip + ':' + service.port + ' [' + url + ']');
+  console.log('Service: ' + service.name + ' ' + service.ip + (service.port  ? ':' + service.port : '') + ' [' + url + ']');
   self._addService(url, val, function(err){
     self._addService(imageUrl, val, function(err2){
       if(err || err2) {
