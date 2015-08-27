@@ -35,6 +35,31 @@ function BuiltInDns(docker) {
 }
 _.merge(BuiltInDns.prototype, backendMixin);
 
+var findUrlsByCid = function(node, cid) {
+  var hits = [];
+  if(node.value && node.value.indexOf(cid) > -1) {
+    hits.push(node.key);
+    return hits;
+  }
+  if(node.nodes && _.isArray(node.nodes)) {
+    node.nodes.forEach(function(node) {
+      hits = hits.concat(findUrlsByCid(node, cid));
+    });
+  }
+  return hits;
+};
+
+BuiltInDns.prototype.removeServiceByCid = function (cid) {
+  var self = this;
+  this.etcd.get(this.prefix, {recursive: true}, function(err, obj) {
+    if(err) return cb(err);
+    if(!obj.node.nodes) return;
+
+    var urls = findUrlsByCid(obj.node, cid);
+    console.log('Urls to remove:', urls);
+    self.removeByUrls(urls);
+  });
+};
 
 BuiltInDns.prototype._addService = function addService(url, val, cb) {
   etcd.set(url, JSON.stringify(val), cb);
@@ -58,6 +83,7 @@ BuiltInDns.prototype.addService = function addService(service, cb) {
     port: service.port,
     priority: service.attribs.SKYDNS_PRIORITY || 1,
     weight: service.attribs.SKYDNS_WEIGHT || 1,
+    cid: service.cid,
     text: text
   };
 
