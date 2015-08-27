@@ -65,6 +65,7 @@ BuiltInDns.prototype.addService = function addService(service, cb) {
   self._addService(url, val, function(err){
     self._addService(imageUrl, val, function(err2){
       if(err || err2) {
+        console.log(err, err2);
         if(cb) cb(err);
         return;
       }
@@ -92,6 +93,7 @@ BuiltInDns.prototype.sync = function (activeServices) {
   activeServices.forEach(function(service) {
      runningMap[self._buildImageUrl(service)] = service;
   });
+
   // Fetch current etcd-services
   etcd.get(this.prefix, {recursive: true}, function(err, obj) {
     if(err) {
@@ -118,6 +120,8 @@ BuiltInDns.prototype.sync = function (activeServices) {
 
     // remove not running
     var runningUrls = _.keys(runningMap);
+
+    console.log('runningUrls', runningUrls);
     var toDelete = _.difference(inEtcdUrls, runningUrls);
     if(toDelete.length) {
       debug('Remove ' + toDelete.length + ' obsolete services');
@@ -149,7 +153,7 @@ BuiltInDns.prototype._buildUrl = function _buildUrl(service) {
 };
 
 BuiltInDns.prototype._buildImageUrl = function _buildImageUrl(service) {
-  return this.prefix + '/' + service.imageName.replace(/\//g , '-') + '/' + process.env.HOSTNAME + '/' + service.name;
+  return this.prefix + '/' + service.imageName.replace(/\/|:/g, '-') + '/' + service.name + '/' + process.env.HOSTNAME;
 };
 
 
