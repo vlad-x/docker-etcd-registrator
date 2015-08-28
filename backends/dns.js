@@ -139,7 +139,7 @@ BuiltInDns.prototype.sync = function (activeServices) {
     }
 
     var inEtcdUrls = [];
-    if(obj.node.nodes) {
+    if (obj.node.nodes) {
       inEtcdUrls = etcd.deepFindKeys(obj.node, new RegExp('\/' + process.env.HOSTNAME + '$'));
     }
     console.log('inEtcdUrls', inEtcdUrls);
@@ -155,7 +155,8 @@ BuiltInDns.prototype.sync = function (activeServices) {
     }
 
     // add not registred
-    var toAdd = _.difference(runningUrls, inEtcdUrls);
+    // var toAdd = _.difference(runningUrls, inEtcdUrls);
+    var toAdd = runningUrls; // need to update everything in case of rename
     if(toAdd.length) {
       debug('Adding ' + toAdd.length + ' already running services');
       var added = {};
@@ -280,8 +281,18 @@ BuiltInDns.prototype.startServer = function(server) {
 
     if ((q.name.indexOf(self.domain) > -1) && q.name.indexOf(self.domain) + self.domain.length == q.name.length) {
       var wildcard = q.name.indexOf('*.') > -1;
+      var name = q.name;
+      var parts = q.name.split('.');
+      if (parts.length > 2) {
+        var first = parts.shift();
+        if (first == '*') {
+          first = '';
+        }
+        var regex = new RegExp(first + '.*' + parts.join('\\.'));
+        name = parts.slice(parts.length - 2).join('.');
+      }
 
-      var path = nameToEtcdPath(self.domain, q.name);
+      var path = nameToEtcdPath(self.domain, name);
       console.log('Etcd get', self.prefix + path);
       etcd.get(self.prefix + path, {recursive: true}, function(err, obj) {
         if (err) {
@@ -292,7 +303,11 @@ BuiltInDns.prototype.startServer = function(server) {
         var added = {};
         traverseObject(obj.node).forEach(function(node){
           pathToNames(self.domain, node.key).forEach(function(name){
-            if (!wildcard) {
+            if (regex) {
+              if (!name.match(regex)) {
+                return;
+              }
+            } else if (!wildcard) {
               if (name !== q.name) {
                 return;
               }
