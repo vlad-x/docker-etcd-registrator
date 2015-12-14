@@ -270,6 +270,8 @@ var pathToNames = function(domain, path) {
 };
 
 var cache = {};
+var proxyTimeout = 5*60*1000;
+var localTimeout = 3*1000;
 
 BuiltInDns.prototype.startServer = function(server) {
   var self = this;
@@ -278,8 +280,26 @@ BuiltInDns.prototype.startServer = function(server) {
     var q = request.question[0];
 
     console.log('DNS request', q.name);
+    var isDockerHost = (q.name.indexOf(self.domain) > -1) && q.name.indexOf(self.domain) + self.domain.length == q.name.length;
 
-    if ((q.name.indexOf(self.domain) > -1) && q.name.indexOf(self.domain) + self.domain.length == q.name.length) {
+    // check in cache
+    var cacheKey = [q.name, q.type].join('-');
+    var cached = cache[cacheKey];
+    if (cached) {
+      var timeout = isDockerHost ? localTimeout : proxyTimeout;
+
+      if (+(new Date) - cached.timestamp > timeout)  {
+        delete cache[cacheKey];
+      } else {
+        for (var key in cached.value) {
+          response[key] = cached.value[key];
+        }
+        console.log('DNS response from cache', response.answer.map(function(a){ return [a.name, a.address] }));
+        return response.send();
+      }
+    }
+
+    if (isDockerHost) {
       var wildcard = q.name.indexOf('*.') > -1;
       var name = q.name;
       var parts = q.name.split('.');
@@ -324,6 +344,12 @@ BuiltInDns.prototype.startServer = function(server) {
             added[key] = true;
           });
         });
+        cache[cacheKey] = {
+          timestamp: +(new Date),
+          value: {
+            answer: response.answer
+          }
+        };
         console.log('DNS response', response.answer.map(function(a){ return [a.name, a.address] }));
         try {
           response.send();
@@ -338,19 +364,6 @@ BuiltInDns.prototype.startServer = function(server) {
         }
       });
     } else {
-      var cacheKey = [q.name, q.type].join('-');
-      var cached = cache[cacheKey];
-      if (cached) {
-        if (+(new Date) - cached.timestamp > 5*60*1000)  {
-          delete cache[cacheKey];
-        } else {
-          for (var key in cached.value) {
-            response[key] = cached.value[key];
-          }
-          console.log('DNS response from cache', response.answer.map(function(a){ return [a.name, a.address] }));
-          return response.send();
-        }
-      }
       console.log('Forwarding DNS query', q);
       self._makeDNSRequest(q.name, q.type, function(err, resp){
         if (err) {
